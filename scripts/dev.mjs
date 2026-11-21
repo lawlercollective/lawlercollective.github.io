@@ -25,7 +25,7 @@ const HOST = '127.0.0.1';
 const MAX_UPLOAD = 150 * 1024 * 1024;
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif',
+  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif',
   '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json',
 };
 
@@ -297,7 +297,13 @@ http.createServer((req, res) => {
   if (!file.startsWith(OUT + path.sep)) { res.writeHead(403).end(); return; }
   if (!path.extname(file) && fs.existsSync(file + '.html')) file += '.html'; // /gallery-cars -> gallery-cars.html
   fs.stat(file, (err, st) => {
-    if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
+    if (err || !st.isFile()) {
+      // Like GitHub Pages: unknown addresses get the site's 404 page.
+      const nf = path.join(OUT, '404.html');
+      if (fs.existsSync(nf)) { res.writeHead(404, { 'Content-Type': TYPES['.html'], 'Cache-Control': 'no-cache' }); fs.createReadStream(nf).pipe(res); }
+      else res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
+      return;
+    }
     // Cache like the live site: photos and the font have content-hashed names, so the
     // browser can keep them; pages are re-checked each time (cheap 304 when unchanged).
     const etag = `"${st.size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`;

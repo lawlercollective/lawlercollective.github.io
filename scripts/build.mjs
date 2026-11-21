@@ -225,27 +225,61 @@ async function main() {
   if (existsSync(path.join(ROOT, 'CNAME'))) await fs.copyFile(path.join(ROOT, 'CNAME'), path.join(OUT, 'CNAME'));
   await fs.writeFile(path.join(OUT, '.nojekyll'), '');
 
-  // Home-screen icons (phones' "Add to Home Screen") and the web app manifest.
-  const iconSvg = await fs.readFile(path.join(SRC, 'assets', 'Lawler_Collective_Icon_White.svg'));
-  const makeIcon = async (size, file) => {
-    const inner = Math.round(size * 0.68);
-    const logo = await sharp(iconSvg, { density: 600 }).resize(inner, inner).png().toBuffer();
-    await sharp({ create: { width: size, height: size, channels: 4, background: '#000000' } })
-      .composite([{ input: logo, gravity: 'center' }])
-      .png()
-      .toFile(path.join(OUT, 'assets', file));
+  // Icons for every browser, phone and app. All are drawn from the white icon SVG
+  // on black, so they stay visible on light and dark tabs alike.
+  //  favicon.svg / favicon.ico / favicon-*.png: browser tabs, bookmarks, Windows, Google results
+  //  apple-touch-icon.png: iPhone/iPad home screen (iOS also asks for it at the site root)
+  //  icon-192/512 + icon-maskable-512: Android home screen and installed app (manifest)
+  //  og-image.png: link previews in iMessage, Facebook, Slack, Discord and others
+  const iconInner = (await inlineSvg('Lawler_Collective_Icon_White.svg', { label: '', width: 500, height: 500 }))
+    .replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  // scale: how much of the square the round icon fills; round: corner rounding (0 = full square).
+  const iconSvg = (scale, round) => {
+    const off = (500 - 500 * scale) / 2;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">` +
+      `<rect width="500" height="500" rx="${round * 500}" fill="#000"/>` +
+      `<g transform="translate(${off} ${off}) scale(${scale})">${iconInner}</g></svg>`;
   };
-  await Promise.all([makeIcon(180, 'apple-touch-icon.png'), makeIcon(192, 'icon-192.png'), makeIcon(512, 'icon-512.png')]);
+  const tabSvg = iconSvg(0.92, 0.22);
+  const png = (svg, size) => sharp(Buffer.from(svg), { density: Math.max(72, Math.ceil((size / 500) * 72 * 4)) })
+    .resize(size, size).png({ compressionLevel: 9 }).toBuffer();
+  await fs.writeFile(path.join(OUT, 'favicon.svg'), tabSvg);
+  const [p16, p32, p48, p96, p180, p192, p512, pMask] = await Promise.all([
+    png(tabSvg, 16), png(tabSvg, 32), png(tabSvg, 48), png(tabSvg, 96),
+    png(iconSvg(0.74, 0), 180), // iOS rounds the corners itself
+    png(iconSvg(0.92, 0.22), 192), png(iconSvg(0.92, 0.22), 512),
+    png(iconSvg(0.7, 0), 512), // Android crops maskable icons to a circle or squircle
+  ]);
+  await Promise.all([
+    fs.writeFile(path.join(OUT, 'favicon.ico'), ico([[16, p16], [32, p32], [48, p48]])),
+    fs.writeFile(path.join(OUT, 'favicon-96x96.png'), p96),
+    fs.writeFile(path.join(OUT, 'apple-touch-icon.png'), p180),
+    fs.writeFile(path.join(OUT, 'icon-192.png'), p192),
+    fs.writeFile(path.join(OUT, 'icon-512.png'), p512),
+    fs.writeFile(path.join(OUT, 'icon-maskable-512.png'), pMask),
+  ]);
+  // Link preview: the wordmark centered on black, 1200x630 (the size every platform expects).
+  const wordSvg = (await fs.readFile(path.join(SRC, 'assets', 'Lawler_Collective_Wordmark_White.svg')));
+  const word = await sharp(wordSvg, { density: 300 }).resize({ width: 760 }).png().toBuffer();
+  await sharp({ create: { width: 1200, height: 630, channels: 4, background: '#000000' } })
+    .composite([{ input: word, gravity: 'center' }])
+    .png({ compressionLevel: 9 })
+    .toFile(path.join(OUT, 'og-image.png'));
   await fs.writeFile(path.join(OUT, 'site.webmanifest'), JSON.stringify({
+    id: '/',
     name: `${config.name} LLC`,
     short_name: config.name,
+    description: config.description,
     start_url: '/',
+    scope: '/',
     display: 'standalone',
     background_color: '#000000',
     theme_color: '#000000',
     icons: [
-      { src: '/assets/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: '/assets/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
     ],
   }, null, 2));
 
@@ -375,8 +409,30 @@ ${panels}
     }));
   }
 
+  // 404: GitHub Pages shows this for any address that doesn't exist. Every link and
+  // asset on it is absolute, so it works at any depth (e.g. /old/page/here).
+  await fs.writeFile(path.join(OUT, "404.html"), render({
+    ...common,
+    title: `Page not found | ${config.name}`,
+    description: "This page doesn't exist.",
+    head: '<meta name="robots" content="noindex">\n',
+    homePrefix: "/",
+    bodyClass: "is-404",
+    content: `<main class="section notfound" id="main">
+<header class="section-head">
+  <p class="eyebrow">Error 404</p>
+  <h1 class="section-title">This page is out of frame.</h1>
+</header>
+<p class="notfound-text">The page you're looking for doesn't exist or has moved. Try one of these instead.</p>
+<div class="notfound-actions">
+  <a class="btn btn-solid" href="/">Home</a>
+${galleries.map((g) => `  <a class="btn" href="/gallery-${g}">${esc(title(g))}</a>`).join("\n")}
+</div>
+</main>`,
+  }));
+
   const total = Object.values(photos).reduce((n, l) => n + l.length, 0);
-  log(`Built ${galleries.length + 1} pages, ${total} photos in ${((Date.now() - started) / 1000).toFixed(1)}s -> _site/`);
+  log(`Built ${galleries.length + 2} pages, ${total} photos in ${((Date.now() - started) / 1000).toFixed(1)}s -> _site/`);
   // Drop cached images no current photo uses (removed photos, old settings).
   let pruned = 0;
   for (const f of await fs.readdir(CACHE)) {
@@ -388,6 +444,21 @@ ${panels}
   await fs.rm(FINAL, { recursive: true, force: true });
   await fs.rename(OUT, FINAL);
   return { galleries };
+}
+
+// Packs PNG images into one .ico file (modern .ico files can hold PNGs directly).
+function ico(images) {
+  const head = Buffer.alloc(6 + images.length * 16);
+  head.writeUInt16LE(0, 0); head.writeUInt16LE(1, 2); head.writeUInt16LE(images.length, 4);
+  let offset = head.length;
+  images.forEach(([size, buf], i) => {
+    const e = 6 + i * 16;
+    head.writeUInt8(size >= 256 ? 0 : size, e); head.writeUInt8(size >= 256 ? 0 : size, e + 1);
+    head.writeUInt16LE(1, e + 4); head.writeUInt16LE(32, e + 6);
+    head.writeUInt32LE(buf.length, e + 8); head.writeUInt32LE(offset, e + 12);
+    offset += buf.length;
+  });
+  return Buffer.concat([head, ...images.map(([, buf]) => buf)]);
 }
 
 // Turns an SVG file from src/assets into markup that can sit inside the page:

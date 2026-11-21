@@ -221,12 +221,14 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
     height: var(--hd);
     justify-content: space-between;
     gap: 0;
-    font-size: 11px;
-    letter-spacing: 0.12em;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
     border-top: 1px solid var(--rule);
   }
   /* Full-height tap areas (48px), at least 44px wide, per phone touch guidelines. */
   .nav a, .nav-drop-btn { height: 100%; min-width: 44px; justify-content: center; padding: 0 4px; }
+  .nav-drop-btn { gap: 4px; }
+  .nav-drop-btn svg { width: 8px; height: 8px; }
   .nav-drop { height: 100%; display: flex; }
   .nav-menu a { min-height: 46px; }
   .nav > a::after, .nav-drop-btn::after { bottom: 10px; left: 4px; right: 4px; }
@@ -235,8 +237,8 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
   .gallery-page { padding-top: 48px; }
 }
 
-@media (max-width: 340px) {
-  .nav { letter-spacing: 0.04em; }
+@media (max-width: 360px) {
+  .nav { font-size: 10px; letter-spacing: 0.04em; }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
@@ -733,3 +735,9 @@ footer {
   @view-transition { navigation: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* 404 */
+.notfound { min-height: calc(100svh - var(--hd-total) - 120px); display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 100px; text-align: center; }
+.notfound .section-head { margin-bottom: 24px; }
+.notfound-text { max-width: 34em; margin: 0 auto 36px; color: rgb(255 255 255 / 0.72); line-height: 1.7; }
+.notfound-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }

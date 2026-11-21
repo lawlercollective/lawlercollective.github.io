@@ -213,14 +213,17 @@
 
   // ----- home page: underline the section you're looking at -----
   const navLinks = [...document.querySelectorAll('.nav > a[data-section]')];
-  const sections = navLinks.map((a) => document.getElementById(a.dataset.section)).filter(Boolean);
+  // "top" is the slideshow at the top of the home page (the Home link).
+  const sectionFor = (a) => (a.dataset.section === 'top' ? document.querySelector('.hero') : document.getElementById(a.dataset.section));
+  const pairs = navLinks.map((a) => [a, sectionFor(a)]).filter(([, s]) => s);
+  const sections = pairs.map(([, s]) => s);
   if (sections.length) {
     const visible = new Set();
     const spy = new IntersectionObserver((entries) => {
-      entries.forEach((en) => (en.isIntersecting ? visible.add(en.target.id) : visible.delete(en.target.id)));
-      const current = sections.find((s) => visible.has(s.id))?.id;
-      navLinks.forEach((a) => {
-        if (a.dataset.section === current) a.setAttribute('aria-current', 'true');
+      entries.forEach((en) => (en.isIntersecting ? visible.add(en.target) : visible.delete(en.target)));
+      const current = sections.find((s) => visible.has(s));
+      pairs.forEach(([a, s]) => {
+        if (s === current) a.setAttribute('aria-current', 'true');
         else a.removeAttribute('aria-current');
       });
     }, { rootMargin: '-40% 0px -55% 0px' });

@@ -7,13 +7,21 @@
 <title>{{title}}</title>
 <meta name="description" content="{{description}}">
 <meta name="theme-color" content="#000000">
-<meta property="og:title" content="{{title}}">
+{{head}}<meta property="og:title" content="{{title}}">
 <meta property="og:description" content="{{description}}">
-<meta property="og:image" content="https://www.lawlercollective.com/assets/Lawler_Collective_Icon_White.svg">
-<link rel="icon" type="image/svg+xml" href="/assets/Lawler_Collective_Icon_White.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lawler Collective">
+<meta property="og:image" content="https://www.lawlercollective.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Lawler Collective">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Lawler Collective">
+<meta name="application-name" content="Lawler Collective">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="{{font}}" as="font" type="font/woff2" crossorigin>
 {{preload}}
@@ -31,6 +39,7 @@
       {{wordmark}}
     </a>
     <nav class="nav" aria-label="Main">
+      <a href="{{homePrefix}}#home" data-section="top">Home</a>
       <a href="{{homePrefix}}#about" data-section="about">About</a>
       <a href="{{homePrefix}}#recent" data-section="recent">Recent</a>
       <a href="{{homePrefix}}#contact" data-section="contact">Contact</a>
