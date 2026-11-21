@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>(c=>{c.add('js');if(location.hash)c.add('arrived');if(!('onpagereveal' in window))c.add('no-vt')})(document.documentElement.classList)</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta name="theme-color" content="#000000">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:image" content="https://www.lawlercollective.com/assets/Lawler_Collective_Icon_White.svg">
+<link rel="icon" type="image/svg+xml" href="/assets/Lawler_Collective_Icon_White.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="{{font}}" as="font" type="font/woff2" crossorigin>
+{{preload}}
+<style>{{css}}</style>
+<script>{{gridJs}}</script>
+<script type="speculationrules">{"prerender":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/img/*"}},{"not":{"selector_matches":"[target=_blank]"}}]},"eagerness":"moderate"}]}</script>
+<!-- Google Analytics: the visit is queued now; the script itself loads once the page is ready, so it never competes with the photos. -->
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-EX0BGF3KNV');addEventListener('load',function(){(window.requestIdleCallback||setTimeout)(function(){var s=document.createElement('script');s.async=true;s.src='https://www.googletagmanager.com/gtag/js?id=G-EX0BGF3KNV';document.head.appendChild(s)},{timeout:3000})})</script>
+</head>
+<body id="home" class="{{bodyClass}}">
+<a class="skip" href="#main">Skip to content</a>
+<header class="hd">
+  <div class="hd-wrap">
+    <a class="mark" href="{{homePrefix}}#home" aria-label="Lawler Collective, home">
+      <img src="/assets/Lawler_Collective_Wordmark_White.svg" width="1050" height="350" alt="Lawler Collective LLC Logo">
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="{{homePrefix}}#about" data-section="about">About</a>
+      <a href="{{homePrefix}}#recent" data-section="recent">Recent</a>
+      <a href="{{homePrefix}}#contact" data-section="contact">Contact</a>
+      <div class="nav-drop">
+        <button class="nav-drop-btn" type="button" aria-expanded="false" aria-controls="gallery-menu"{{galleryCurrent}}>Gallery<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button>
+        <ul class="nav-menu" id="gallery-menu">
+{{galleryLinks}}
+        </ul>
+      </div>
+    </nav>
+  </div>
+</header>
+
+{{content}}
+
+<footer>
+  <div class="ft-wrap">
+    <img class="footer-logo" src="/assets/Lawler_Collective_Icon_White.svg" width="36" height="36" alt="Lawler Collective LLC Logo">
+    <span class="footer-text">&copy; {{year}} Lawler Collective LLC, All Rights Reserved.<span class="footer-version">{{version}}</span></span>
+  </div>
+</footer>
+
+<div class="lightbox" id="lightbox" hidden>
+  <img alt="">
+  <div class="lb-ui">
+    <button class="lb-btn lb-close" aria-label="Close">&times;</button>
+    <button class="lb-btn lb-prev" aria-label="Previous photo">&#8249;</button>
+    <button class="lb-btn lb-next" aria-label="Next photo">&#8250;</button>
+    <span class="lb-count"></span>
+  </div>
+</div>
+
+<script>{{js}}</script>
+</body>
+</html>

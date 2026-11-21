@@ -1,0 +1,7 @@
+{
+  "name": "Lawler Collective",
+  "version": "1.1.0",
+  "description": "Portrait, car and environment photography by Lawler Collective, based in Macomb, Michigan.",
+  "home": "recent",
+  "galleries": ["portraits", "cars", "environments"]
+}

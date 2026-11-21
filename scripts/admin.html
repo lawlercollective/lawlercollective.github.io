@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Manager | Lawler Collective</title>
+<link rel="icon" type="image/svg+xml" href="/assets/Lawler_Collective_Icon_White.svg">
+<style>
+  :root {
+    --bg: #0a0a0a; --panel: #131313; --panel-2: #1b1b1b; --ink: #f2f2f2; --ink-2: #a3a3a3; --ink-3: #6b6b6b;
+    --rule: rgb(255 255 255 / 0.09); --red: rgb(200, 19, 49); --gold: #f5c400; --ok: #3ecf8e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; padding-bottom: 120px; }
+  button, .btn { font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  button:hover, .btn:hover { border-color: rgb(255 255 255 / 0.25); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary { background: var(--red); border-color: var(--red); }
+  .btn-danger:hover { border-color: var(--red); color: #ff6b81; }
+  input[type=file] { display: none; }
+  select { font: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 10px; }
+
+  .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 14px 24px; background: rgb(10 10 10 / 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+  .top h1 { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
+  .top .spacer { flex: 1; }
+  .status { font-size: 12px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 8px; }
+  .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .status.busy::before { background: var(--gold); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  .top a { color: var(--ink-2); font-size: 13px; }
+
+  .intro { max-width: 1400px; margin: 20px auto 0; padding: 0 24px; color: var(--ink-2); font-size: 13px; }
+  .intro b { color: var(--ink); font-weight: 600; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 12px 24px; display: grid; gap: 18px; }
+  .cat { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 16px; transition: border-color 0.15s, background 0.15s; }
+  .cat.drop-target { border-color: var(--red); background: #1a1012; }
+  .cat.unsorted { border-style: dashed; border-color: rgb(245 196 0 / 0.45); }
+  .cat.unsorted h2 { color: var(--gold); }
+  .cat-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cat-head h2 { font-size: 16px; font-weight: 600; }
+  .cat-head .sub { color: var(--ink-3); font-size: 12px; }
+  .cat-head .spacer { flex: 1; }
+  .cat-head button, .cat-head .btn { padding: 5px 10px; font-size: 13px; }
+  .hint { color: var(--ink-3); font-size: 12px; margin: -6px 0 12px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; min-height: 90px;
+    border: 1px dashed transparent; border-radius: 10px; }
+  .tiles.empty { border-color: var(--rule); display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-size: 13px; }
+  .tile { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--panel-2); cursor: pointer;
+    outline: 2px solid transparent; outline-offset: 2px; user-select: none; }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .tile .name { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 5px; font-size: 11px; color: #fff;
+    background: linear-gradient(transparent, rgb(0 0 0 / 0.75)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.selected { outline-color: var(--red); }
+  .tile.selected::after { content: '✓'; position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--red); color: #fff; font-size: 13px; display: grid; place-items: center; }
+  .tile.dragging { opacity: 0.4; }
+  .star { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; padding: 0; justify-content: center; border-radius: 50%;
+    background: rgb(0 0 0 / 0.55); border: 0; color: rgb(255 255 255 / 0.55); font-size: 15px; opacity: 0; transition: opacity 0.15s; }
+  .tile:hover .star, .star.on { opacity: 1; }
+  .star.on { color: var(--gold); }
+
+  .bar { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; background: #1e1e1e; border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 14px; box-shadow: 0 12px 40px rgb(0 0 0 / 0.6); z-index: 20; flex-wrap: wrap; max-width: calc(100vw - 24px); }
+  .bar.show { transform: translate(-50%, 0); }
+  .bar b { font-weight: 600; margin-right: 4px; }
+
+  .toast { position: fixed; top: 74px; right: 20px; z-index: 30; display: grid; gap: 8px; }
+  .toast div { background: #1e1e1e; border: 1px solid rgb(255 255 255 / 0.14); border-left: 3px solid var(--ok); border-radius: 10px;
+    padding: 10px 14px; max-width: 360px; box-shadow: 0 8px 28px rgb(0 0 0 / 0.5); animation: in 0.2s ease-out; }
+  .toast div.err { border-left-color: var(--red); }
+  @keyframes in { from { opacity: 0; transform: translateY(-6px); } }
+
+  @media (max-width: 600px) {
+    .top, .intro, main { padding-left: 14px; padding-right: 14px; }
+    .tiles { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+    .star { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Photo manager</h1>
+  <span class="status" id="status">Up to date</span>
+  <span class="spacer"></span>
+  <button id="new-cat">+ New category</button>
+  <a href="/" target="_blank" rel="noopener">View site ↗</a>
+</div>
+
+<p class="intro">
+  Changes are saved straight into the <b>photos</b> folder, and the preview rebuilds by itself.
+  To publish, <b>commit and push</b> (for example in GitHub Desktop).<br>
+  Drag photos from your computer onto a category to add them · drag thumbnails between categories to move them ·
+  click to select several · <b>★</b> picks the landing slideshow · deleted photos go to the <b>.trash</b> folder.
+</p>
+
+<main id="cats"></main>
+
+<div class="bar" id="bar">
+  <span><b id="sel-count">0</b>selected</span>
+  <label>Move to <select id="move-to"></select></label>
+  <button id="move-btn" class="btn-primary">Move</button>
+  <button id="del-btn" class="btn-danger">Delete</button>
+  <button id="clear-btn">Clear</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const el = (tag, props = {}, ...kids) => {
+    const n = Object.assign(document.createElement(tag), props);
+    kids.flat().forEach((k) => n.append(k));
+    return n;
+  };
+  const title = (slug) => slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const key = (cat, name) => `${cat}/${name}`;
+
+  let data = null;
+  const selected = new Set(); // "cat/name"
+  let dragItems = null;
+
+  // ----- talking to the preview server -----
+  async function api(route, body, query = '') {
+    const res = await fetch(`/__admin/${route}${query}`, {
+      method: 'POST',
+      headers: { 'X-Photo-Manager': '1', 'Content-Type': body instanceof Blob ? 'application/octet-stream' : 'application/json' },
+      body: body instanceof Blob ? body : JSON.stringify(body || {}),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `Failed (${res.status})`);
+    return out;
+  }
+
+  function toast(msg, isErr = false) {
+    const t = el('div', { className: isErr ? 'err' : '', textContent: msg });
+    $('#toast').append(t);
+    setTimeout(() => t.remove(), isErr ? 7000 : 3500);
+  }
+
+  async function run(fn, okMsg) {
+    try {
+      const r = await fn();
+      if (okMsg) toast(typeof okMsg === 'function' ? okMsg(r) : okMsg);
+    } catch (e) { toast(e.message, true); }
+    await load();
+    watchBuild();
+  }
+
+  // ----- site rebuild status -----
+  let watching = false;
+  async function watchBuild() {
+    if (watching) return;
+    watching = true;
+    const status = $('#status');
+    const start = data ? data.version : 0;
+    status.textContent = 'Updating preview…';
+    status.classList.add('busy');
+    for (let i = 0; i < 600; i++) {
+      await new Promise((r) => setTimeout(r, 700));
+      const s = await fetch('/__admin/state').then((r) => r.json()).catch(() => null);
+      if (s && !s.building && (s.version > start || i > 4)) break;
+    }
+    status.textContent = 'Preview up to date';
+    status.classList.remove('busy');
+    watching = false;
+  }
+
+  // ----- rendering -----
+  async function load() {
+    data = await fetch('/__admin/state').then((r) => r.json());
+    for (const k of [...selected]) {
+      const [cat, name] = k.split('/');
+      const still = cat === '' ? data.unsorted.includes(name) : data.categories.some((c) => c.slug === cat && c.photos.includes(name));
+      if (!still) selected.delete(k);
+    }
+    render();
+  }
+
+  function render() {
+    const root = $('#cats');
+    const galleries = data.categories.filter((c) => !c.isHome);
+    root.replaceChildren(...(data.unsorted.length ? [unsortedSection()] : []), ...data.categories.map((c) => section(c, galleries)));
+    const move = $('#move-to');
+    move.replaceChildren(...data.categories.map((c) => el('option', { value: c.slug, textContent: c.isHome ? 'Home – Recent work' : title(c.slug) })));
+    updateBar();
+  }
+
+  function section(c, galleries) {
+    const gi = galleries.indexOf(c);
+    const fileInput = el('input', { type: 'file', multiple: true, accept: 'image/*,.heic,.heif,.tif,.tiff' });
+    fileInput.onchange = () => { upload(c.slug, [...fileInput.files]); fileInput.value = ''; };
+
+    const head = el('div', { className: 'cat-head' },
+      el('h2', { textContent: c.isHome ? 'Home page – Recent work' : title(c.slug) }),
+      el('span', { className: 'sub', textContent: `${c.photos.length} photo${c.photos.length === 1 ? '' : 's'}${c.isHome ? '' : ` · /gallery-${c.slug}`}` }),
+      el('span', { className: 'spacer' }),
+      el('label', { className: 'btn btn-primary', title: 'Add photos from your computer' }, '+ Add photos', fileInput),
+    );
+    if (!c.isHome) {
+      head.append(
+        Object.assign(el('button', { textContent: '↑', title: 'Move up in the Gallery menu', disabled: gi <= 0 }), { onclick: () => run(() => api('category', { action: 'move', slug: c.slug, dir: -1 })) }),
+        Object.assign(el('button', { textContent: '↓', title: 'Move down in the Gallery menu', disabled: gi >= galleries.length - 1 }), { onclick: () => run(() => api('category', { action: 'move', slug: c.slug, dir: 1 })) }),
+        Object.assign(el('button', { textContent: 'Rename' }), { onclick: () => renameCat(c.slug) }),
+      );
+    }
+    head.append(Object.assign(el('button', { textContent: 'Renumber', title: 'Rename files to LAW-01, LAW-02, … with no gaps' }), {
+      onclick: () => run(() => api('renumber', { cat: c.slug }), (r) => (r.renamed ? `Renumbered ${r.renamed} files` : 'Already numbered with no gaps')),
+    }));
+    if (!c.isHome) {
+      head.append(Object.assign(el('button', { className: 'btn-danger', textContent: 'Delete', title: c.photos.length ? 'Move or delete its photos first' : 'Delete this empty category', disabled: c.photos.length > 0 }), {
+        onclick: () => { if (confirm(`Delete the empty "${title(c.slug)}" category?`)) run(() => api('category', { action: 'delete', slug: c.slug }), 'Category deleted'); },
+      }));
+    }
+
+    const tiles = el('div', { className: 'tiles' + (c.photos.length ? '' : ' empty') });
+    if (!c.photos.length) tiles.textContent = 'Drop photos here';
+    c.photos.forEach((name) => tiles.append(tile(c.slug, name)));
+
+    const sec = el('section', { className: 'cat' }, head);
+    if (c.isHome) {
+      sec.append(el('p', { className: 'hint', textContent: data.hero.length
+        ? `★ ${data.hero.length} photo${data.hero.length === 1 ? '' : 's'} picked for the landing slideshow (from any category).`
+        : 'Landing slideshow: no ★ picks, so it uses the first 5 wide photos here. Star photos in any category to choose them.' }));
+    }
+    sec.append(tiles);
+
+    // Drop zone: files from the computer -> upload; thumbnails from another category -> move.
+    sec.addEventListener('dragover', (e) => {
+      const files = e.dataTransfer.types.includes('Files');
+      if (!files && !dragItems) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = files ? 'copy' : 'move';
+      sec.classList.add('drop-target');
+    });
+    sec.addEventListener('dragleave', (e) => { if (!sec.contains(e.relatedTarget)) sec.classList.remove('drop-target'); });
+    sec.addEventListener('drop', (e) => {
+      e.preventDefault();
+      sec.classList.remove('drop-target');
+      if (e.dataTransfer.files.length) return upload(c.slug, [...e.dataTransfer.files]);
+      if (dragItems) {
+        const items = dragItems.filter((it) => it.cat !== c.slug);
+        dragItems = null;
+        if (items.length) moveItems(items, c.slug);
+      }
+    });
+    return sec;
+  }
+
+  // Photos sitting loose in photos/ (not in a category yet, so not on the site).
+  function unsortedSection() {
+    const n = data.unsorted.length;
+    const tiles = el('div', { className: 'tiles' });
+    data.unsorted.forEach((name) => tiles.append(tile('', name)));
+    const all = el('button', { textContent: 'Select all' });
+    all.onclick = () => { data.unsorted.forEach((name) => selected.add(key('', name))); render(); };
+    return el('section', { className: 'cat unsorted' },
+      el('div', { className: 'cat-head' },
+        el('h2', { textContent: 'Unsorted' }),
+        el('span', { className: 'sub', textContent: `${n} photo${n === 1 ? '' : 's'} in the photos folder · not on the site yet` }),
+        el('span', { className: 'spacer' }),
+        all),
+      el('p', { className: 'hint', textContent: 'Drag these onto a category below, or select them and use Move to.' }),
+      tiles);
+  }
+
+  function tile(cat, name) {
+    const k = key(cat, name);
+    const heroOn = data.hero.some((h) => h.toLowerCase() === k.toLowerCase());
+    const t = el('div', { className: 'tile' + (selected.has(k) ? ' selected' : ''), draggable: true, title: name },
+      el('img', { src: `/__admin/thumb?cat=${encodeURIComponent(cat)}&name=${encodeURIComponent(name)}`, loading: 'lazy', alt: '' }),
+      el('span', { className: 'name', textContent: name }),
+    );
+    const star = el('button', { className: 'star' + (heroOn ? ' on' : ''), textContent: '★', title: heroOn ? 'Remove from landing slideshow' : 'Show in landing slideshow' });
+    star.onclick = (e) => {
+      e.stopPropagation();
+      const next = heroOn ? data.hero.filter((h) => h.toLowerCase() !== k.toLowerCase()) : [...data.hero, k];
+      run(() => api('hero', { items: next }), heroOn ? 'Removed from slideshow' : 'Added to slideshow');
+    };
+    if (cat) t.append(star); // unsorted photos aren't on the site, so they can't be in the slideshow
+    t.onclick = () => {
+      selected.has(k) ? selected.delete(k) : selected.add(k);
+      t.classList.toggle('selected');
+      updateBar();
+    };
+    t.addEventListener('dragstart', (e) => {
+      const keys = selected.has(k) ? [...selected] : [k];
+      dragItems = keys.map((x) => { const [c, n] = x.split('/'); return { cat: c, name: n }; });
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', keys.join('\n'));
+      t.classList.add('dragging');
+    });
+    t.addEventListener('dragend', () => { t.classList.remove('dragging'); setTimeout(() => (dragItems = null), 0); });
+    return t;
+  }
+
+  function updateBar() {
+    $('#sel-count').textContent = selected.size;
+    $('#bar').classList.toggle('show', selected.size > 0);
+  }
+
+  // ----- actions -----
+  async function upload(cat, files) {
+    const photos = files.filter((f) => /\.(jpe?g|png|webp|avif|tiff?|heic|heif)$/i.test(f.name));
+    if (photos.length < files.length) toast(`Skipped ${files.length - photos.length} file(s) that aren't photos`, true);
+    if (!photos.length) return;
+    const status = $('#status');
+    status.classList.add('busy');
+    let done = 0;
+    for (const f of photos) {
+      status.textContent = `Adding ${done + 1} of ${photos.length}…`;
+      try {
+        await api('upload', f, `?cat=${encodeURIComponent(cat)}&name=${encodeURIComponent(f.name)}`);
+        done++;
+      } catch (e) { toast(`${f.name}: ${e.message}`, true); }
+    }
+    toast(`Added ${done} photo${done === 1 ? '' : 's'} to ${title(cat)}`);
+    await load();
+    watchBuild();
+  }
+
+  function moveItems(items, to) {
+    run(() => api('move', { items, to }), (r) => `Moved ${r.moved} photo${r.moved === 1 ? '' : 's'} to ${title(to)}`);
+    items.forEach((it) => selected.delete(key(it.cat, it.name)));
+  }
+
+  const selectedItems = () => [...selected].map((x) => { const [cat, name] = x.split('/'); return { cat, name }; });
+
+  $('#move-btn').onclick = () => moveItems(selectedItems(), $('#move-to').value);
+  $('#del-btn').onclick = () => {
+    const items = selectedItems();
+    if (!confirm(`Delete ${items.length} photo${items.length === 1 ? '' : 's'}? They'll be moved to the .trash folder, so you can still get them back.`)) return;
+    selected.clear();
+    run(() => api('delete', { items }), (r) => `Deleted ${r.deleted} (kept in ${r.trash})`);
+  };
+  $('#clear-btn').onclick = () => { selected.clear(); render(); };
+
+  $('#new-cat').onclick = () => {
+    const name = prompt('Name for the new category (for example: Weddings)');
+    if (name) run(() => api('category', { action: 'create', name }), (r) => `Created ${title(r.slug)}. It's in the Gallery menu at /gallery-${r.slug}`);
+  };
+  function renameCat(slug) {
+    const name = prompt(`New name for "${title(slug)}"`, title(slug));
+    if (name) run(() => api('category', { action: 'rename', slug, name }), (r) => `Renamed to ${title(r.slug)}. Its page is now /gallery-${r.slug}`);
+  }
+
+  // Don't let a stray drop on the page open the file in the browser.
+  addEventListener('dragover', (e) => e.preventDefault());
+  addEventListener('drop', (e) => e.preventDefault());
+
+  load();
+})();
+</script>
+</body>
+</html>

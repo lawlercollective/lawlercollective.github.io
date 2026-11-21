@@ -1,14 +1,19 @@
 {
-  "name": "lawlerlogan.github.io",
-  "version": "1.0.0",
+  "name": "lawlercollective-site",
+  "version": "1.1.0",
   "description": "Lawler Collective Website",
-  "main": "src/index.html",
   "scripts": {
-    "start": "open src/index.html"
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "renumber": "node scripts/renumber.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@fontsource-variable/montserrat": "^5.3.0",
+    "sharp": "^0.34.5"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
 }
