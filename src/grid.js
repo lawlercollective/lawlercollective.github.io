@@ -1,24 +1,51 @@
 // Photo grid layout. Inlined in the page <head> so each grid is shuffled and laid out
 // the moment it's parsed, before it is first drawn (no visible reorder or jump).
 //
-// Rows follow a rhythm of heights (a big feature row, then normal, tight, medium...)
-// and every row exactly fills the width, so photos are never cropped.
+// Wider screens: rows follow a rhythm of heights (a big feature row, then normal,
+// tight, medium...) and every row exactly fills the width, so photos are never cropped.
+// Phones: two equal columns, each photo at its natural shape, placed in whichever
+// column is shorter (a staggered "masonry" layout).
 (() => {
-  const RHYTHM_WIDE = [1.6, 1, 0.78, 1.08];
-  const RHYTHM_NARROW = [1.7, 1, 1];
+  const RHYTHM = [1.6, 1, 0.78, 1.08];
+  const PHONE = 600; // grid width below which the two-column layout is used
 
-  window.__layoutGrid = (g) => {
-    const W = g.clientWidth;
-    if (!W) return;
-    const cs = getComputedStyle(g);
-    const base = parseFloat(cs.getPropertyValue('--row-h')) || 280;
-    const gap = parseFloat(cs.columnGap) || 10;
-    const rhythm = W < 700 ? RHYTHM_NARROW : RHYTHM_WIDE;
-    const items = [...g.children].filter((el) => el.classList.contains('ph'));
+  // Tell the browser the exact display width (plus the 6% drift headroom) so it
+  // picks the smallest file that's still sharp on this screen.
+  const setSizes = (el, w) => {
+    const sizes = Math.ceil(w * 1.06) + 'px';
+    el.querySelectorAll('source, img').forEach((s) => { if (s.sizes !== sizes) s.sizes = sizes; });
+  };
+
+  // Whole pixels only: the grid can be e.g. 337.6px wide, and rounding that up would
+  // make each row a fraction too wide, pushing its last photo onto a line of its own.
+  const widthOf = (g) => Math.floor(g.getBoundingClientRect().width);
+
+  function columns(g, items, W, gap) {
+    const cols = 2;
+    const cw = (W - gap * (cols - 1)) / cols;
+    const heights = new Array(cols).fill(0);
+    for (const el of items) {
+      const c = heights.indexOf(Math.min(...heights));
+      const h = Math.round(cw / +el.dataset.r);
+      el.style.left = Math.round(c * (cw + gap)) + 'px';
+      el.style.top = heights[c] + 'px';
+      el.style.width = Math.floor(cw) + 'px';
+      el.style.height = h + 'px';
+      setSizes(el, cw);
+      heights[c] += h + gap;
+    }
+    g.style.height = Math.max(0, Math.max(...heights) - gap) + 'px';
+    g.classList.add('is-columns');
+  }
+
+  function rows(g, items, W, gap) {
+    g.classList.remove('is-columns');
+    g.style.height = '';
+    const base = parseFloat(getComputedStyle(g).getPropertyValue('--row-h')) || 280;
     let i = 0;
     let row = 0;
     while (i < items.length) {
-      const target = base * rhythm[row % rhythm.length];
+      const target = base * RHYTHM[row % RHYTHM.length];
       let sum = 0;
       let j = i;
       let full = false;
@@ -44,19 +71,26 @@
         const el = items[k];
         const w = full && k === j - 1 ? W - gaps - used : Math.floor(+el.dataset.r * h);
         used += w;
+        el.style.left = el.style.top = '';
         el.style.width = w + 'px';
         el.style.height = Math.round(h) + 'px';
-        // Tell the browser the exact width (plus the 6% drift headroom) so it picks
-        // the smallest file that's still sharp on this screen.
-        const sizes = Math.ceil(w * 1.06) + 'px';
-        el.querySelectorAll('source, img').forEach((s) => { if (s.sizes !== sizes) s.sizes = sizes; });
+        setSizes(el, w);
       }
       i = j;
       row++;
     }
+  }
+
+  window.__layoutGrid = (g) => {
+    const W = widthOf(g);
+    if (!W) return;
+    const gap = parseFloat(getComputedStyle(g).columnGap) || 10;
+    const items = [...g.children].filter((el) => el.classList.contains('ph'));
+    (W < PHONE ? columns : rows)(g, items, W, gap);
     g.dataset.w = W;
     g.classList.add('is-laid');
   };
+  window.__gridWidth = widthOf;
 
   window.__grid = (g, eager, shuffle) => {
     const items = [...g.children];

@@ -161,7 +161,7 @@
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(pending);
       pending = requestAnimationFrame(() => grids.forEach((g) => {
-        if (+g.dataset.w !== g.clientWidth) window.__layoutGrid(g);
+        if (+g.dataset.w !== window.__gridWidth(g)) window.__layoutGrid(g);
       }));
     });
     grids.forEach((g) => ro.observe(g));
@@ -320,7 +320,15 @@
     const thumb = thumbOf(index);
     // Make sure the spot it shrinks back into is on screen and shown.
     const r = frame.getBoundingClientRect();
-    if (r.bottom < headH() || r.top > innerHeight) frame.scrollIntoView({ block: 'center' });
+    // If its spot is under the top bar (or below the screen), scroll just enough to
+    // bring it fully into view first, so the photo never shrinks onto the top bar.
+    const minTop = headH() + 12;
+    const maxBottom = innerHeight - 12;
+    if (r.top < minTop || r.bottom > maxBottom) {
+      const fits = r.height <= maxBottom - minTop;
+      const dy = r.top < minTop || !fits ? r.top - minTop : r.bottom - maxBottom;
+      scrollTo(0, scrollY + dy);
+    }
     frame.style.transition = thumb.style.transition = 'none';
     frame.classList.add('is-in');
     io.unobserve(frame);

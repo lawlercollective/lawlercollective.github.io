@@ -496,6 +496,9 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
 .grid.is-laid { justify-content: center; } /* a short last row sits centered */
 .grid.is-laid::after { display: none; }
 .grid.is-laid .ph { flex: none; aspect-ratio: auto; } /* sizes come from grid.js */
+/* Phones: two staggered columns, each photo placed by grid.js. */
+.grid.is-columns { display: block; position: relative; }
+.grid.is-columns .ph { position: absolute; }
 
 .ph {
   position: relative;
@@ -556,7 +559,7 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
 .ph:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
 
 @media (max-width: 1000px) { .grid { --row-h: 230px; } }
-@media (max-width: 700px) { .grid { --row-h: 150px; --gap: 6px; } .ph { border-radius: 4px; } }
+@media (max-width: 700px) { .grid { --row-h: 150px; --gap: 8px; } .ph { border-radius: 4px; } }
 
 /* ---------- lightbox ---------- */
 
