@@ -42,7 +42,10 @@ const HERO_SIZES = '(max-aspect-ratio: 3/2) 150vh, 100vw';
 const HERO_COUNT = 5;
 const EAGER_COUNT = 8;
 
-const config = JSON.parse(await fs.readFile(path.join(ROOT, 'site.json'), 'utf8'));
+// site.json is re-read at the start of every build, so edits (including the photo
+// manager's) show up in the running preview without restarting it.
+let config = {};
+const readConfig = async () => JSON.parse(await fs.readFile(path.join(ROOT, 'site.json'), 'utf8'));
 
 const log = (...a) => console.log(...a);
 const sha = (buf, n = 10) => crypto.createHash('sha1').update(buf).digest('hex').slice(0, n);
@@ -194,6 +197,7 @@ function gridHtml(photos, { eager = 0 } = {}) {
 
 async function main() {
   const started = Date.now();
+  config = await readConfig();
   await fs.rm(OUT, { recursive: true, force: true });
   await fs.mkdir(CACHE, { recursive: true });
   await fs.mkdir(OUT, { recursive: true });
