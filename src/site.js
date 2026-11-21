@@ -85,6 +85,92 @@
     }
   }
 
+  // ----- gallery tabs: switch galleries in place, no page reload -----
+  // Every gallery is on the gallery page; tabs (and Gallery menu links) show one and
+  // hide the others, slide the white pill across, and update the address bar.
+  const panels = [...document.querySelectorAll('.gallery-panel')];
+  if (panels.length) {
+    const tabsEl = document.querySelector('.gallery-tabs');
+    const tabs = [...tabsEl.querySelectorAll('a[data-slug]')];
+    const pill = tabsEl.querySelector('.tab-pill');
+    const titleEl = document.querySelector('.gallery-title');
+    const countEl = document.querySelector('.gallery-count');
+    const siteName = document.title.split('|').pop().trim();
+    const slugOf = (url) => (url.pathname.match(/^\/gallery-([a-z0-9-]+?)(?:\.html)?$/) || [])[1];
+    const activeTab = () => tabs.find((t) => t.hasAttribute('aria-current'));
+
+    const placePill = (tab, animate = true) => {
+      if (!tab) return;
+      if (!animate) pill.style.transition = 'none';
+      pill.style.width = `${tab.offsetWidth}px`;
+      pill.style.transform = `translateX(${tab.offsetLeft}px)`;
+      if (!animate) { void pill.offsetWidth; pill.style.transition = ''; }
+    };
+    placePill(activeTab(), false);
+    document.fonts?.ready.then(() => placePill(activeTab(), false));
+    addEventListener('resize', () => placePill(activeTab(), false));
+
+    let pending = null; // finishes a switch whose fade-out is still running
+    const show = (slug, push) => {
+      if (pending) pending(); // quick double switches / Back: settle the last one first
+      const next = panels.find((p) => p.dataset.slug === slug);
+      const prev = panels.find((p) => !p.hidden);
+      const tab = tabs.find((t) => t.dataset.slug === slug);
+      if (!next || !tab || next === prev) return false;
+
+      tabs.forEach((t) => (t === tab ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current')));
+      document.querySelectorAll('.nav-menu a').forEach((a) => {
+        if (new URL(a.href).pathname === `/gallery-${slug}`) a.setAttribute('aria-current', 'page');
+        else a.removeAttribute('aria-current');
+      });
+      placePill(tab);
+      tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // phones: keep the tab in view
+      if (push) history.pushState({ gallery: slug }, '', `/gallery-${slug}`);
+      document.title = `${tab.dataset.title} Gallery | ${siteName}`;
+
+      let swapped = false;
+      const swap = () => {
+        if (swapped) return;
+        swapped = true;
+        pending = null;
+        prev.hidden = true;
+        next.hidden = false;
+        window.__layoutGrid?.(next.querySelector('.grid'));
+        titleEl.textContent = tab.dataset.title;
+        countEl.textContent = `${tab.dataset.count} photographs`;
+        // If you'd scrolled down into the photos, come back up to the tabs.
+        const top = tabsEl.getBoundingClientRect().top;
+        if (top < headH()) scrollTo(0, scrollY + top - headH() - 24);
+        if (!still.matches) {
+          next.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+          titleEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease' });
+        }
+      };
+      if (still.matches || !prev) swap();
+      else {
+        pending = swap;
+        prev.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-in' }).finished.then(swap, swap);
+      }
+      return true;
+    };
+
+    document.addEventListener('click', (e) => {
+      if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest('a[href]');
+      if (!a) return;
+      const url = new URL(a.href, location.href);
+      const slug = url.origin === location.origin && slugOf(url);
+      if (!slug || !panels.some((p) => p.dataset.slug === slug)) return;
+      e.preventDefault();
+      setDrop(false);
+      show(slug, true);
+    });
+    addEventListener('popstate', () => {
+      const slug = slugOf(location);
+      if (slug) show(slug, false);
+    });
+  }
+
   // ----- page-to-page smoothness for browsers without View Transitions / prerender -----
   const isPageLink = (a) => {
     if (!a || a.target === '_blank' || a.hasAttribute('download')) return null;
@@ -212,8 +298,10 @@
   // The photo is animated directly (movement + scale only, which every browser runs
   // smoothly): it grows out of its spot in the grid, cross-fades between photos, and
   // shrinks back into its spot on close.
-  const items = [...document.querySelectorAll('.grid .ph')]; // in shuffled order
-  if (!items.length) return;
+  const allPhotos = [...document.querySelectorAll('.grid .ph')]; // every grid on the page
+  if (!allPhotos.length) return;
+  // What the viewer steps through: the grid the opened photo is in, in its shuffled order.
+  let items = allPhotos;
   const lb = document.getElementById('lightbox');
   const lbImg = lb.querySelector('img');
   const ui = lb.querySelector('.lb-ui');
@@ -231,7 +319,7 @@
   let avif = null; // unknown until a thumbnail has loaded
   const fullUrl = (a) => {
     if (avif === null) {
-      const seen = items.map((x) => x.querySelector('img').currentSrc).find(Boolean);
+      const seen = allPhotos.map((x) => x.querySelector('img').currentSrc).find(Boolean);
       if (seen) avif = /\.avif$/.test(seen);
     }
     return avif && a.dataset.avif ? a.dataset.avif : a.href;
@@ -247,7 +335,7 @@
 
   // Start fetching the sharp copy as soon as a photo is pointed at or touched,
   // so it's usually ready by the time it's clicked.
-  items.forEach((a) => {
+  allPhotos.forEach((a) => {
     a.addEventListener('pointerenter', () => loadFull(a), { passive: true });
     a.addEventListener('touchstart', () => loadFull(a), { passive: true });
   });
@@ -406,10 +494,12 @@
     fadeIn.finished.then(() => { if (fade && fade[0] === fadeIn) fade = null; }, () => {});
   };
 
-  items.forEach((a, i) => a.addEventListener('click', (e) => {
+  allPhotos.forEach((a) => a.addEventListener('click', (e) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) return; // allow open-in-new-tab
     e.preventDefault();
-    open(i);
+    if (!lb.hidden && !closing) return;
+    items = [...a.parentElement.querySelectorAll(':scope > .ph')]; // this gallery only
+    open(items.indexOf(a));
   }));
 
   lb.addEventListener('click', (e) => {

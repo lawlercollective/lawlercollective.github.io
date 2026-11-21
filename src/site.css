@@ -57,6 +57,9 @@ body {
 
 main { flex: 1; }
 
+/* Selected (highlighted) text in the brand red. */
+::selection { background: var(--red); color: #fff; }
+
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
@@ -92,7 +95,7 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
 
 .mark { display: flex; align-items: center; flex-shrink: 0; }
 
-.mark img {
+.mark svg {
   display: block;
   width: auto;
   height: var(--logo-h);
@@ -476,6 +479,24 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
 .gallery-tabs a:hover { color: #fff; }
 .gallery-tabs a[aria-current] { background: #fff; color: #000; }
 
+/* With JS, a single white pill slides behind the active tab (site.js positions it). */
+.gallery-tabs { position: relative; }
+.gallery-tabs a { position: relative; z-index: 1; }
+.tab-pill { display: none; }
+.js .tab-pill {
+  display: block;
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 0.45s var(--ease), width 0.45s var(--ease);
+  pointer-events: none;
+}
+.js .gallery-tabs a[aria-current] { background: transparent; color: #000; transition: color 0.3s var(--ease); }
+
 /* ---------- photo grid ----------
    src/grid.js lays photos out in full-width rows whose heights follow a rhythm
    (feature, normal, tight, medium...), so nothing is cropped. Without JS the
@@ -556,7 +577,7 @@ a, button, summary { -webkit-tap-highlight-color: transparent; touch-action: man
   }
 }
 @keyframes ph-drift { from { translate: 0 -2.5%; } to { translate: 0 2.5%; } }
-.ph:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+.ph:focus, .ph:focus-visible { outline: none; } /* no outline on photos (e.g. after closing the viewer) */
 
 @media (max-width: 1000px) { .grid { --row-h: 230px; } }
 @media (max-width: 700px) { .grid { --row-h: 150px; --gap: 8px; } .ph { border-radius: 4px; } }

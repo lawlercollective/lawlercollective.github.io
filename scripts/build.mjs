@@ -252,6 +252,10 @@ async function main() {
   const layout = await fs.readFile(path.join(SRC, 'layout.html'), 'utf8');
   const css = (await fs.readFile(path.join(SRC, 'site.css'), 'utf8')).replace('{{font}}', fontUrl);
   const js = await fs.readFile(path.join(SRC, 'site.js'), 'utf8');
+  // Logos are embedded straight into the page, so they show instantly instead of
+  // flashing their alt text while a separate file downloads.
+  const wordmark = await inlineSvg('Lawler_Collective_Wordmark_White.svg', { label: 'Lawler Collective LLC', width: 1050, height: 350 });
+  const footerIcon = await inlineSvg('Lawler_Collective_Icon_White.svg', { label: 'Lawler Collective LLC', width: 36, height: 36, cls: 'footer-logo' });
   const gridJs = await fs.readFile(path.join(SRC, 'grid.js'), 'utf8');
 
   const galleryLinks = (current) => galleries
@@ -263,6 +267,8 @@ async function main() {
     css: minifyCss(css),
     js,
     gridJs,
+    wordmark,
+    footerIcon,
     font: fontUrl,
     galleryLinks: galleryLinks(null),
     year: new Date().getFullYear(),
@@ -336,19 +342,25 @@ async function main() {
     content: home,
   }));
 
-  // Galleries
+  // Galleries: one page holds every gallery, so switching tabs happens in place
+  // (site.js) without reloading. Each /gallery-<slug> URL is that same page with a
+  // different gallery shown first. Hidden galleries don't load photos until opened.
   for (const slug of galleries) {
     const t = title(slug);
     const list = photos[slug];
-    const tabs = galleries.map((g) => `<a href="/gallery-${g}"${g === slug ? ' aria-current="page"' : ''}>${esc(title(g))}</a>`).join('');
+    const tabs = galleries.map((g) => `<a href="/gallery-${g}" data-slug="${g}" data-title="${esc(title(g))}" data-count="${photos[g].length}"` +
+      `${g === slug ? ' aria-current="page"' : ''}>${esc(title(g))}</a>`).join('');
+    const panels = galleries.map((g) => `<section class="gallery-panel" data-slug="${g}" aria-label="${esc(title(g))}"${g === slug ? '' : ' hidden'}>
+${gridHtml(photos[g], { eager: g === slug ? EAGER_COUNT : 0 })}
+</section>`).join('\n');
     const content = `<main class="section gallery-page" id="main">
 <header class="gallery-head">
   <p class="eyebrow">Gallery</p>
   <h1 class="gallery-title">${esc(t)}</h1>
   <p class="gallery-count">${list.length} photographs</p>
-  <nav class="gallery-tabs" aria-label="Galleries">${tabs}</nav>
+  <nav class="gallery-tabs" aria-label="Galleries"><span class="tab-pill" aria-hidden="true"></span>${tabs}</nav>
 </header>
-${gridHtml(list, { eager: EAGER_COUNT })}
+${panels}
 </main>`;
     const first = list[0];
     await fs.writeFile(path.join(OUT, `gallery-${slug}.html`), render({
@@ -376,6 +388,23 @@ ${gridHtml(list, { eager: EAGER_COUNT })}
   await fs.rm(FINAL, { recursive: true, force: true });
   await fs.rename(OUT, FINAL);
   return { galleries };
+}
+
+// Turns an SVG file from src/assets into markup that can sit inside the page:
+// its class-based colors become plain fill attributes (so two logos can't clash),
+// and the XML header, ids and <style> block are removed.
+async function inlineSvg(file, { label, width, height, cls = '' }) {
+  let svg = await fs.readFile(path.join(SRC, 'assets', file), 'utf8');
+  const fills = Object.fromEntries([...svg.matchAll(/\.([\w-]+)\s*\{\s*fill:\s*([^;}\s]+)/g)].map((m) => [m[1], m[2]]));
+  svg = svg
+    .replace(/<\?xml[^>]*>/, '')
+    .replace(/<defs>[\s\S]*?<\/defs>/, '')
+    .replace(/\sclass="([\w-]+)"/g, (m, c) => (fills[c] ? ` fill="${fills[c]}"` : m))
+    .replace(/\sid="[^"]*"/g, '')
+    .replace(/<svg\b/, `<svg${cls ? ` class="${cls}"` : ''} width="${width}" height="${height}" role="img" aria-label="${esc(label)}" focusable="false"`)
+    .replace(/>\s+</g, '><')
+    .trim();
+  return svg;
 }
 
 function minifyCss(s) {
